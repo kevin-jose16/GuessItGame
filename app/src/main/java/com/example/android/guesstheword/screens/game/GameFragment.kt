@@ -16,7 +16,10 @@
 
 package com.example.android.guesstheword.screens.game
 
+import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.text.format.DateUtils
 import android.view.LayoutInflater
 import android.view.View
@@ -56,16 +59,20 @@ class GameFragment : Fragment() {
         binding.gameViewModel = viewModel
         binding.setLifecycleOwner(this)
 
-        viewModel.currentTime.observe(viewLifecycleOwner, Observer { newTime ->
-            binding.timerText.text = DateUtils.formatElapsedTime(newTime)
-        })
-
         viewModel.eventGameFinish.observe(viewLifecycleOwner, Observer {  hasFinished ->
             if(hasFinished){
                 val currentScore = viewModel.score.value ?: 0
                 val action = GameFragmentDirections.actionGameToScore(currentScore)
                 findNavController(this).navigate(action)
                 viewModel.onGameFinishComplete()
+            }
+        })
+
+        // Buzzes when triggered with different buzz events
+        viewModel.eventBuzz.observe(viewLifecycleOwner, Observer { buzzType ->
+            if (buzzType != GameViewModel.BuzzType.NO_BUZZ) {
+                buzz(buzzType.pattern)
+                viewModel.onBuzzComplete()
             }
         })
 
@@ -85,6 +92,19 @@ class GameFragment : Fragment() {
         val action = GameFragmentDirections.actionGameToScore(currentScore)
         findNavController(this).navigate(action)
 
+    }
+
+    private fun buzz(pattern: LongArray) {
+        val buzzer = activity?.getSystemService<Vibrator>()
+
+        buzzer?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                buzzer.vibrate(VibrationEffect.createWaveform(pattern, -1))
+            } else {
+                //deprecated in API 26
+                buzzer.vibrate(pattern, -1)
+            }
+        }
     }
 
 
